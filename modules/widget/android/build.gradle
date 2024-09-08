@@ -40,4 +40,18 @@ android {
   lintOptions {
     abortOnError false
   }
+  buildFeatures {
+    compose true
+  }
+  composeOptions {
+    kotlinCompilerExtensionVersion = "1.5.13"
+  }
+  kotlinOptions {
+    jvmTarget = "1.8"
+  }
+}
+
+dependencies {
+  implementation "androidx.glance:glance-appwidget:1.1.0"
+  implementation "androidx.glance:glance-material3:1.1.0"
 }
