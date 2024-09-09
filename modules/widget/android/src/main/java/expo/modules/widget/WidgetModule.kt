@@ -2,6 +2,9 @@ package expo.modules.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.dp
 import androidx.glance.Button
 import androidx.glance.GlanceId
@@ -15,8 +18,17 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.text.Text
+import com.google.gson.annotations.SerializedName
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
 
 class WidgetModule : Module() {
   // Each module class must implement the definition function. The definition consists of components
@@ -61,6 +73,47 @@ class WidgetModule : Module() {
   }
 }
 
+data class Ticker(
+  @SerializedName("market_id")
+  val marketId: String,
+  @SerializedName("price_variation_24h")
+  val priceVariation24h: String,
+  @SerializedName("price_variation_7d")
+  val priceVariation7d: String,
+  @SerializedName("last_price")
+  val lastPrice: List<String>
+)
+data class TickerResponse(val tickers: List<Ticker>)
+
+interface BudaAPI {
+  @GET("tickers")
+  suspend fun fetchTickers(): TickerResponse
+}
+
+object API {
+  private const val BASE_URL ="https://www.buda.com/api/v2/"
+  private val retrofit: Retrofit = Retrofit.Builder().baseUrl(BASE_URL)
+    .addConverterFactory(GsonConverterFactory.create())
+    .build()
+
+  val budaAPI: BudaAPI by lazy {
+    retrofit.create(BudaAPI::class.java)
+  }
+
+  private var _currentTickers = MutableStateFlow<List<Ticker>>(listOf())
+  val currentTickers: StateFlow<List<Ticker>> get() = _currentTickers
+
+  suspend fun updateTickers() {
+    try {
+      _currentTickers.value = budaAPI.fetchTickers().tickers
+      println(_currentTickers.value)
+    } catch (e: Exception) {
+      println("Something went wrong with the tickers fetch")
+      println(e.message)
+    }
+  }
+}
+
 class MyAppWidget : GlanceAppWidget() {
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     // In this method, load data needed to render the AppWidget.
@@ -73,6 +126,15 @@ class MyAppWidget : GlanceAppWidget() {
   }
   @Composable
   private fun MyContent() {
+
+    val tickers by API.currentTickers.collectAsState()
+
+//    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val updateTickers: () -> Unit = { scope.launch { API.updateTickers() } }
+
+    val firstTicker = if (tickers.size > 0) tickers[0] else null
+
     Column(
       modifier = GlanceModifier.fillMaxSize(),
       verticalAlignment = Alignment.Top,
@@ -81,15 +143,15 @@ class MyAppWidget : GlanceAppWidget() {
       Text(text = "Where to?", modifier = GlanceModifier.padding(12.dp))
       Row(horizontalAlignment = Alignment.CenterHorizontally) {
         Button(
-          text = "Home",
+          text = "${firstTicker?.marketId}",
           onClick = {
-            println("Widget button clicked")
+            updateTickers()
           }
         )
         Button(
-          text = "Work",
+          text = "${firstTicker?.lastPrice?.get(0)}",
           onClick = {
-            println("Widget button clicked")
+            updateTickers()
           }
         )
       }
@@ -99,4 +161,11 @@ class MyAppWidget : GlanceAppWidget() {
 
 class MyAppWidgetReceiver : GlanceAppWidgetReceiver() {
   override val glanceAppWidget: GlanceAppWidget = MyAppWidget()
+
+  override fun onEnabled(context: Context?) {
+    super.onEnabled(context)
+    CoroutineScope(Dispatchers.IO).launch {
+      API.updateTickers()
+    }
+  }
 }
