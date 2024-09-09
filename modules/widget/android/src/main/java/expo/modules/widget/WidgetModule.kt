@@ -5,19 +5,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.Button
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
-import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.google.gson.annotations.SerializedName
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -135,24 +143,35 @@ class MyAppWidget : GlanceAppWidget() {
 
     val firstTicker = if (tickers.size > 0) tickers[0] else null
 
-    Column(
-      modifier = GlanceModifier.fillMaxSize(),
-      verticalAlignment = Alignment.Top,
-      horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+      modifier = GlanceModifier
+        .background(Color.Blue)
+        .padding(16.dp)
+        .width(200.dp)
+        .cornerRadius(20.dp),
     ) {
-      Text(text = "Where to?", modifier = GlanceModifier.padding(12.dp))
-      Row(horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(
-          text = "${firstTicker?.marketId}",
-          onClick = {
-            updateTickers()
-          }
+      Column(
+        modifier = GlanceModifier.padding(16.dp)
+      ) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Button(
+            text = "${firstTicker?.marketId}",
+            onClick = {
+              updateTickers()
+            }
+          )
+        }
+        Spacer(modifier = GlanceModifier.height(8.dp))
+        Text(
+          text = "${firstTicker?.priceVariation24h}% (24h)",
+          style = TextStyle(color = ColorProvider(Color.White))
         )
-        Button(
-          text = "${firstTicker?.lastPrice?.get(0)}",
-          onClick = {
-            updateTickers()
-          }
+        Spacer(modifier = GlanceModifier.height(16.dp))
+        Text(
+          text = "$ ${firstTicker?.lastPrice?.get(0)} CLP",
+          style = TextStyle(color = ColorProvider(Color.White))
         )
       }
     }
